@@ -42,12 +42,6 @@ class WeChatSpy:
         t_start_server.daemon = True
         t_start_server.name = "spy"
         t_start_server.start()
-        current_path = os.path.split(os.path.abspath(__file__))[0]
-        helper_path = os.path.join(current_path, "SpyHelper.exe")
-        attach_thread = Thread(target=os.system, args=(helper_path,))
-        attach_thread.daemon = True
-        attach_thread.name = "attach"
-        attach_thread.start()
 
     def __start_server(self):
         while True:
