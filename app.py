@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from PyWeChatSpy import WeChatSpy
-from PyWeChatSpy.command import MESSAGE
+from PyWeChatSpy.command import MESSAGE, WECHAT_LOGIN
 import requests
 import toml
 
@@ -11,7 +11,15 @@ SYNC_HOST = CONFIG["system"]["host"]
 
 
 def parser(data):
-    if data.type == MESSAGE:
+    if data.type == WECHAT_LOGIN:
+        post_data = {
+            "nickname": data.login_info.nickname,
+            "wechatid": data.login_info.wechatid,
+            "wxid": data.login_info.wxid,
+            "port": data.port
+        }
+        requests.post(f"{SYNC_HOST}?mod=wxrobot&ac=userport", json=post_data)
+    elif data.type == MESSAGE:
         for message in data.message_list.message:
             if message.type == 1:
                 post_data = {
@@ -46,5 +54,5 @@ def send_message():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=CONFIG["system"]["port"])
+    app.run(host="0.0.0.0")
 
