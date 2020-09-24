@@ -8,19 +8,16 @@ import toml
 with open("config.toml", "r") as rf:
     CONFIG = toml.load(rf)
 SYNC_HOST = CONFIG["system"]["host"]
+wechatid2port = dict()
+port2wechatid = dict()
 
 
 def parser(data):
     if data.type == WECHAT_LOGIN:
         spy.get_login_info(port=data.port)
     elif data.type == LOGIN_INFO:
-        post_data = {
-            "nickname": data.login_info.nickname,
-            "wechatid": data.login_info.wechatid,
-            "wxid":     data.login_info.wxid,
-            "port":     data.port
-        }
-        requests.post(f"{SYNC_HOST}?mod=wxrobot&ac=userport", json=post_data)
+        wechatid2port[data.login_info.wechatid] = data.port
+        port2wechatid[data.port] = data.login_info.wechatid
     elif data.type == MESSAGE:
         for message in data.message_list.message:
             if message.type == 1:
@@ -30,7 +27,7 @@ def parser(data):
                     "wxid2": message.wxid2,
                     "content": message.content,
                     "self": message.self,
-                    "port": data.port
+                    "wechatid": port2wechatid.get(data.port)
                 }
                 requests.post(f"{SYNC_HOST}?mod=wxrobot", json=post_data)
 
@@ -43,8 +40,10 @@ spy = WeChatSpy(parser=parser)
 def send_message():
     if not (message_type := request.json.get("type")):
         return jsonify({"success": 0, "msg": "未找到参数type"})
-    elif not (port := request.json.get("port")):
-        return jsonify({"success": 0, "msg": "未找到参数port"})
+    elif not (wechatid := request.json.get("wechatid")):
+        return jsonify({"success": 0, "msg": "未找到参数wechatid"})
+    if not (port := wechatid2port.get(wechatid)):
+        return jsonify({"success": 0, "msg": f"根据微信号{wechatid}未找到对应port"})
     if message_type == 1:
         if not (wxid1 := request.json.get("wxid1")):
             return jsonify({"success": 0, "msg": "未找到参数wxid1"})
