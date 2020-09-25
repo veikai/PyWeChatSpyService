@@ -1,8 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from PyWeChatSpy import WeChatSpy
 from PyWeChatSpy.command import MESSAGE, WECHAT_LOGIN, LOGIN_INFO
+from uuid import uuid4
 import requests
+import base64
 import toml
+import os
 
 
 with open("config.toml", "r") as rf:
@@ -30,6 +33,19 @@ def parser(data):
                     "wechatid": port2wechatid.get(data.port)
                 }
                 requests.post(f"{SYNC_HOST}?mod=wxrobot", json=post_data)
+            elif message.type == 3:
+                file_name = "{}.jpg".format(uuid4().__str__().replace("-", ""))
+                with open(os.path.join("images", file_name), "wb") as wf:
+                    wf.write(base64.b64decode(message.content))
+                post_data = {
+                    "type": 3,
+                    "wxid1": message.wxid1,
+                    "wxid2": message.wxid2,
+                    "content": file_name,
+                    "self": message.self,
+                    "wechatid": port2wechatid.get(data.port)
+                }
+                requests.post(f"{SYNC_HOST}?mod=wxrobot", json=post_data)
 
 
 app = Flask(__name__)
@@ -52,6 +68,16 @@ def send_message():
         wxid2 = request.json.get("wxid2") or ""
         spy.send_text(wxid1, content, wxid2, port=port)
     return jsonify({"success": 1, "msg": "消息发送成功"})
+
+
+@app.route("/img/<img>", methods=["GET"])
+def get_image(img):
+    file_path = os.path.join("images", img)
+    if not os.path.exists(file_path):
+        return jsonify({"success": 0, "msg": "图片不存在"})
+    with open(file_path, "rb") as ir:
+        image = ir.read()
+    return Response(image, mimetype="image/jpeg")
 
 
 if __name__ == '__main__':
